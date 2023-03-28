@@ -2,7 +2,7 @@ import telebot
 import random
 import time
 
-bot = telebot.TeleBot('5990456095:AAGyvm_XzPQG2HzB0VIHA63Sf5LTmb7DDAA')
+bot = telebot.TeleBot('your_token')
 
 questions = [
     {"question": "Türkiye'nin başkenti neresidir?", "answer": "Ankara"},
@@ -20,6 +20,7 @@ questions_ru = [
 
 user_language = {}
 scores = {}
+stop_game_flag = False
 
 # клавиатуры
 start_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=1)
@@ -30,11 +31,11 @@ language_keyboard.add(telebot.types.KeyboardButton('Türkçe 🇹🇷'), telebot
 
 main_menu_keyboard_tr = telebot.types.ReplyKeyboardMarkup(row_width=2)
 main_menu_keyboard_tr.add(telebot.types.KeyboardButton('Soru Sor 🤔'), telebot.types.KeyboardButton('Pes Et 😔'),
-                       telebot.types.KeyboardButton('Skor 📊'), telebot.types.KeyboardButton('Dil 🌐'))
+                       telebot.types.KeyboardButton('Skor 📊'), telebot.types.KeyboardButton('Dil 🌐'), telebot.types.KeyboardButton('Tamamlamak 🛑'))
 
 main_menu_keyboard_ru = telebot.types.ReplyKeyboardMarkup(row_width=2)
 main_menu_keyboard_ru.add(telebot.types.KeyboardButton('Вопрос 🤔'), telebot.types.KeyboardButton('Сдаться 😔'),
-                       telebot.types.KeyboardButton('Счет 📊'), telebot.types.KeyboardButton('Язык 🌐'))
+                       telebot.types.KeyboardButton('Счет 📊'), telebot.types.KeyboardButton('Язык 🌐'), telebot.types.KeyboardButton('Завершить 🛑'))
 
 
 
@@ -61,15 +62,43 @@ def set_language(message):
 def change_language(message):
     bot.send_message(message.chat.id, 'Hangi dili tercih edersin?', reply_markup=language_keyboard)
 
+@bot.message_handler(func=lambda message: message.text == 'Tamamlamak 🛑' or message.text == 'Завершить 🛑')
+@bot.message_handler(func=lambda message: message.text == 'Tamamlamak 🛑' or message.text == 'Завершить 🛑')
+def stop_game(message):
+    global stop_game_flag
+    chat_id = message.chat.id
+    language = user_language.get(chat_id, 'Türkçe')
+    bot.send_message(chat_id, 'Oyun bitti.' if language == 'Türkçe' else 'Игра окончена.', reply_markup=start_keyboard)
+    stop_game_flag = True  # установка флага
+    scores[chat_id] = 0  # обнуление счета
+    bot.send_message(chat_id,
+                     'Oyun için teşekkürler! Skorunuz sıfırlandı.' if language == 'Türkçe' else 'Спасибо за игру! Ваш счет обнулен.',
+                     reply_markup=start_keyboard)
 
 @bot.message_handler(func=lambda message: message.text == 'Soru Sor 🤔' or message.text == 'Вопрос 🤔')
 def ask_question(message):
+    if not message:
+        chat_id = message.chat.id
+        bot.send_message(chat_id, 'Выберите язык, чтобы начать игру', reply_markup=language_keyboard)
+        return
     chat_id = message.chat.id
-    language = user_language.get(message.chat.id, 'Türkçe')
-    ready_message = bot.send_message(chat_id, 'Будьте готовы!')
+    language = user_language.get(chat_id)
+    if not language:
+        bot.send_message(chat_id, 'Выберите язык, чтобы начать игру', reply_markup=language_keyboard)
+        return
+    global stop_game_flag
+    stop_game_flag = False  # сброс флага
+    if stop_game_flag:  # проверка флага
+        bot.send_message(chat_id, 'Oyun bitti.' if language == 'Türkçe' else 'Игра окончена.',
+                         reply_markup=start_keyboard)
+        return
+
+    ready_message = bot.send_message(chat_id, 'Hazır mısın?' if language == 'Türkçe' else 'Будьте готовы!')
     countdown = 5
     countdown_message = None
     while countdown > 0:
+        if stop_game_flag:  # проверка флага
+            return
         if countdown_message:
             bot.edit_message_text(chat_id=chat_id, message_id=countdown_message.message_id, text=str(countdown))
         else:
@@ -78,7 +107,10 @@ def ask_question(message):
         countdown -= 1
     bot.delete_message(chat_id, countdown_message.message_id)
     bot.delete_message(chat_id, ready_message.message_id)
-    bot.send_message(chat_id, 'Ответьте на вопрос:')
+    if stop_game_flag:  # проверка флага
+        bot.send_message(chat_id, 'Oyun bitti.' if language == 'Türkçe' else 'Игра окончена.',
+                         reply_markup=start_keyboard)
+        return
     if language == 'Türkçe':
         question = random.choice(questions)
         answer = question['answer']
@@ -88,6 +120,7 @@ def ask_question(message):
         answer = question['answer']
         bot.send_message(chat_id, question['question'])
     bot.register_next_step_handler(message, check_answer, answer, language)
+
 
 def check_answer(message, answer, language):
     if message.text.lower() == answer.lower():
