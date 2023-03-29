@@ -62,7 +62,7 @@ def set_language(message):
 def change_language(message):
     bot.send_message(message.chat.id, 'Hangi dili tercih edersin?', reply_markup=language_keyboard)
 
-@bot.message_handler(func=lambda message: message.text == 'Tamamlamak 🛑' or message.text == 'Завершить 🛑')
+
 @bot.message_handler(func=lambda message: message.text == 'Tamamlamak 🛑' or message.text == 'Завершить 🛑')
 def stop_game(message):
     global stop_game_flag
@@ -141,8 +141,10 @@ def check_answer(message, answer, language):
 def get_score(message):
     user_id = message.chat.id
     language = user_language.get(user_id, 'Türkçe')
+    score_text = 'Skorunuz' if language == 'Türkçe' else 'Ваш счет'
     score = scores.get(user_id, 0)
-    bot.send_message(user_id, f"Ваш счет: {score}", reply_markup=main_menu_keyboard_tr if language == 'Türkçe' else main_menu_keyboard_ru)
+    bot.send_message(user_id, f"{score_text}: {score}", reply_markup=main_menu_keyboard_tr if language == 'Türkçe' else main_menu_keyboard_ru)
+
 
 
 
