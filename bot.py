@@ -2,7 +2,7 @@ import telebot
 import random
 import time
 
-bot = telebot.TeleBot('your_token')
+bot = telebot.TeleBot('Ваш токен')
 
 questions = [
     {"question": "Türkiye'nin başkenti neresidir?", "answer": "Ankara"},
